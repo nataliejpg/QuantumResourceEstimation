@@ -1,0 +1,111 @@
+namespace Quantum.Hubbardladder {
+    open Quantum.Hubbard;
+
+    operation JWString(q1Idx: Int, q2Idx: Int, qubits: Qubits[]): Unit is Adj + Ctl {
+        let dist = q2Idx - q1Idx;
+        for (idx in 1 .. dist - 3) {
+            CNOT(qubits[q1Idx + idx], qubits[q1Idx + idx + 1]);
+        }
+        CZ(qubits[q2Idx - 1], qubits[q2Idx]);
+    }
+
+    operation JWStringInv(q1Idx: Int, q2Idx: Int, qubits: Qubits[]): Unit is Adj + Ctl {
+        let dist = q2Idx - q1Idx;
+        CZ(qubits[q2Idx - 1], qubits[q2Idx]);
+        for (idx in dist - 3 .. 1) {
+            CNOT(qubits[q1Idx + idx], qubits[q1Idx + idx + 1]);
+        }
+    }
+
+    operation ApplySingleHoppingTerm(q1Idx: Int, q2Idx: Int, dt: Double, J: Double, qubits: Qubits[]): Unit is Adj + Ctl {
+        let q1 = qubits[q1Idx];
+        let q2 = qubits[q2Idx];
+        if (q2Idx - q1Idx > 1) {
+            JWString(q1Idx, q2Idx, qubits);
+        }
+        H(q1);
+        H(q2);
+        CNOT(q1, q2);
+        Rz((-1. * J) * dt, q2);
+        CNOT(q1, q2);
+        H(q1);
+        H(q2);
+        ClifY(q1);
+        ClifY(q2);
+        CNOT(q1, q2);
+        Rz((-1. * J) * dt, q2);
+        CNOT(q1, q2);
+        ClifYInv(q1);
+        ClifYInv(q2);
+        if (q2Idx - q1Idx > 1) {
+            JWStringInv(q1Idx, q2Idx, qubits);
+        }
+    }
+
+    operation ApplyNestedHoppingTerms(q1Idxs: Int[], q2Idxs: Int[], dt: Double, J: Double, qubits: Qubits[]): Unit is Adj + Ctl {
+        let q1 = qubits[q1Idx];
+        let q2 = qubits[q2Idx];
+        if (q2Idx - q1Idx > 1) {
+            JWString(q1Idx, q2Idx, qubits);
+        }
+        H(q1);
+        H(q2);
+        CNOT(q1, q2);
+        Rz((-1. * J) * dt, q2);
+        CNOT(q1, q2);
+        H(q1);
+        H(q2);
+        ClifY(q1);
+        ClifY(q2);
+        CNOT(q1, q2);
+        Rz((-1. * J) * dt, q2);
+        CNOT(q1, q2);
+        ClifYInv(q1);
+        ClifYInv(q2);
+        if (q2Idx - q1Idx > 1) {
+            JWStringInv(q1Idx, q2Idx, qubits);
+        }
+    }
+
+    operation ApplyHoppingTermsLadderVertical(nSites: Int, dt: Double, J: Double, qubits: Qubit[]): Unit is Adj + Ctl {
+        for (idxSite in 0..2..nSites - 2) {
+            ApplySingleHoppingTerm(idxSite, idxSite + 1, dt, J, qubits);
+            ApplySingleHoppingTerm(idxSite + nSites, idxSite + nSites + 1, dt, J, qubits);
+        }
+        for (idxSite in 1..2..nSites - 2) {
+            ApplySingleHoppingTerm(idxSite, idxSite + 1, dt, J, qubits);
+            ApplySingleHoppingTerm(idxSite + nSites, idxSite + nSites + 1, dt, J, qubits);
+        }
+        for (idxSite in 0..4..nSites - 2) {
+            ApplySingleHoppingTerm(idxSite, idxSite + 3, dt, J, qubits);
+            ApplySingleHoppingTerm(idxSite + nSites, idxSite + nSites + 3, dt, J, qubits);
+        }
+        for (idxSite in 2..4..nSites - 2) {
+            ApplySingleHoppingTerm(idxSite, idxSite + 3, dt, J, qubits);
+            ApplySingleHoppingTerm(idxSite + nSites, idxSite + nSites + 3, dt, J), qubits;
+        }
+    }
+
+    operation ApplyHoppingTermsLadderHorizontal(nSites: Int, dt: Double, J: Double, qubits: Qubit[]): Unit is Adj + Ctl {
+        let length = nSites / 2
+        for (idxSite in 0..2..length - 3) {
+            ApplySingleHoppingTerm(idxSite, idxSite + 1, dt, J, qubits);
+            ApplySingleHoppingTerm(nSites - idxSite - 2, nSites - idxSite - 1, dt, J, qubits);
+            ApplySingleHoppingTerm(idxSite + nSites, idxSite + nSites + 1, dt, J, qubits);
+            ApplySingleHoppingTerm(2 * nSites - idxSite - 2, 2 * nSites - idxSite - 1, dt, J, qubits);
+        }
+        for (idxSite in 1..2..length - 3) {
+            ApplySingleHoppingTerm(idxSite, idxSite + 1, dt, J, qubits);
+            ApplySingleHoppingTerm(nSites - idxSite - 2, nSites - idxSite - 1, dt, J, qubits);
+            ApplySingleHoppingTerm(idxSite + nSites, idxSite + nSites + 1, dt, J, qubits);
+            ApplySingleHoppingTerm(2 * nSites - idxSite - 2, 2 * nSites - idxSite - 1, dt, J, qubits);
+        }
+        mutable upperRowInds = Int[length]
+        mutable lowerRowInds = Int[length]
+        for (idxSite in 0 .. length - 1) {
+            set upperRowInds w/= idxSite <- idxSite;
+            set lowerRowInds w/= idxSite <- idxSite + length;
+        ApplyNestedHoppingTerms(upperRowInds, lowerRowInds, dt, J, qubits)
+    }
+
+}
