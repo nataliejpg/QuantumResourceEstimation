@@ -3,33 +3,23 @@ namespace Quantum.Hubbardevolve {
     open Quantum.Hubbardchain;
     open Quantum.Hubbardladder;
 
-    operation EvolveSingleTimestep(nSites: Int, dt: Double, mu: Double, U: Double, J: Double, structure: Int ,  qubits : Qubit[]): Unit is Adj + Ctl {
+    operation EvolveSingleTimestep(nSites: Int, dt: Double, mu: Double, U: Double, J: Double, structure: Int, qubits: Qubit[]): Unit is Adj + Ctl {
         ApplyChemicalPotentialTerms(nSites, dt, mu, U, qubits);
         ApplyCoulumbRepulsionTerms(nSites, dt, U, qubits);
         if (structure == 1) {
             ApplyHoppingTermsChain(nSites, dt, J, qubits);
         } else-if (structure == 2) {
-            ApplyHoppingTermsLadder(nSites, dt, J, qubits);
+            ApplyHoppingTermsLadderVertical(nSites, dt, J, qubits);
         } else-if (structure == 3) {
-            ApplyHoppingTermsLadder(nSites, dt, J, qubits);
+            ApplyHoppingTermsLadderHorizontal(nSites, dt, J, qubits);
         } else{
             ApplyHoppingTermsLattice(nSites, dt, J, qubits);
         }
     }
 
     operation EvolveSingleTimestepDummy(nSites: Int, dt: Double, mu: Double, U: Double, J: Double, structure: Int): Unit is Adj + Ctl {
-        using (qubits = Qubit[nSites]) {
-            ApplyChemicalPotentialTerms(nSites, dt, mu, U, qubits);
-            ApplyCoulumbRepulsionTerms(nSites, dt, U, qubits);
-            if (structure == 1) {
-                ApplyHoppingTermsChain(nSites, dt, J, qubits);
-            } else-if (structure == 2) {
-                ApplyHoppingTermsLadder(nSites, dt, J, qubits);
-            } else-if (structure == 3) {
-                ApplyHoppingTermsLadder(nSites, dt, J, qubits);
-            } else{
-                ApplyHoppingTermsLattice(nSites, dt, J, qubits);
-            }
+        using (qubits = Qubit[nSites * 2]) {
+            EvolveSingleTimestep(nSites, dt, mu, U, J, structure, qubits);
         }
     }
 
@@ -60,8 +50,6 @@ namespace Quantum.Hubbardevolve {
                     set finalState w/= idxSite <- newState;
                 }
             }
-
-
             return finalState;
         }
     }
