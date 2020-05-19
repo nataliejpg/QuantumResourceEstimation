@@ -8,9 +8,9 @@ namespace Quantum.Hubbardevolve {
         ApplyCoulumbRepulsionTerms(nSites, dt, U, qubits);
         if (structure == 1) {
             ApplyHoppingTermsChain(nSites, dt, J, qubits);
-        } else-if (structure == 2) {
+        } elif (structure == 2) {
             ApplyHoppingTermsLadderVertical(nSites, dt, J, qubits);
-        } else-if (structure == 3) {
+        } elif (structure == 3) {
             ApplyHoppingTermsLadderHorizontal(nSites, dt, J, qubits);
         } else{
             ApplyHoppingTermsLattice(nSites, dt, J, qubits);
@@ -25,6 +25,14 @@ namespace Quantum.Hubbardevolve {
 
     operation Evolve(initialState: Int[], time: Double, dt: Double, mu: Double, U: Double, J: Double, structure: Int): Int[] {
         let nSites = Length(initialState);
+        if (structure == 3) {
+            let qubitNum = 2 * nSites + 2;
+        } elif (structure == 4) {
+            let length = Floor(Sqrt(IntasDouble(N)));
+            let qubitNum = 2 * (nSites + length - 1);
+        } else {
+            let qubitNum = 2 * nSites;
+        }
         using (qubits = Qubit[nSites * 2]) {
             for (idxSite in 0 .. nSites - 1) {
                 if (initialState[idxSite] % 2 == 1) {
