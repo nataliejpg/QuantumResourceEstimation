@@ -27,10 +27,9 @@ namespace Quantum.Isinglongrange {
             if ((nSites%2 == 0) or (step < nSites/2)){
                 for ind in (0 .. nSites/2 - 1) {
                     let i = ind - step;
+                    mutable j = nSites - (step + ind + 2);
                     if (ind == (num - 1)) {
-                        let j = nSites - (step + 1);
-                    } else {
-                        let j = nSites - (step + ind + 2);
+                        set j += (ind + 1);
                     }
                     ApplyWithCA(CNOT(qubits[i], _), Rz(-2.0 * J[i][j] * dt, _), qubits[j]);
                 }
@@ -46,13 +45,13 @@ namespace Quantum.Isinglongrange {
         if nested {
             EvolveCouplingsNested(nSites, dt, J, qubits);
         } else {
-            EvolveCouplings(nSites, dt, J, qubits)
+            EvolveCouplings(nSites, dt, J, qubits);
         }
     }
 
-    operation EvolveSingleTimestepDummy(nSites: Int, dt: Double, g: Double[], h: Double[], J: Double[][]): Unit is Adj + Ctl {
+    operation EvolveSingleTimestepDummy(nSites: Int, dt: Double, g: Double[], h: Double[], J: Double[][], nested: Bool): Unit is Adj + Ctl {
         using (qubits = Qubit[nSites]) {
-            EvolveSingleTimestep(nSites, dt, g, h, J, qubits)
+            EvolveSingleTimestep(nSites, dt, g, h, J, qubits, nested);
         }
     }
 
