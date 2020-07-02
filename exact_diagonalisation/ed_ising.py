@@ -174,7 +174,7 @@ def ising_interaction_matrix(p, state_table):
         ZiZj = np.tensordot(spin, spin, axes=0)
 
         # get matrix element
-        matrixelement = -1.0 * np.sum(np.multiply(p['J'], ZiZj))
+        matrixelement = -1.0 * np.sum(np.multiply(p['J'], ZiZj)) / 2
 
         # store matrix element (note hz is diagonal so Out = In)
         row.append(In)
@@ -186,6 +186,23 @@ def ising_interaction_matrix(p, state_table):
     ising_interaction = sparse.csr_matrix((data, (row, col)),
                                           shape=(dim, dim), dtype=complex)
     return ising_interaction
+
+
+def local_H_matrix(p, state_table):
+    """
+    generates the matrix that applies Hadamard to all qubits, not sparse form
+    Args:
+        p - dictionary that contains the relevant system parameters
+        state_table - list of all state_numbers that belong to the
+            relevant Hilbertspace
+    Returns:
+        H_matrix - H matrix on the full Hilbertspace
+    """
+    single_H = np.array([[1., 1.], [1., -1.]]) / np.sqrt(2)
+    H_mat = np.eye(1)
+    for i in range(p['N']):
+        H_mat = np.kron(single_H, H_mat)
+    return H_mat
 
 
 def make_Hamiltonian(p, state_table):
@@ -378,7 +395,7 @@ def Yi_matrix(p, site, state_table):
     return Yi
 
 
-def evolve(p, state_table, state, kind="list", trotterised=False):
+def evolve(p, state_table, state, kind="list", trotterised=False, xinit=False, xmeas=False):
     """
     evolve 'state' under parameters defined in dictionary 'p'
     Args:
@@ -390,6 +407,10 @@ def evolve(p, state_table, state, kind="list", trotterised=False):
             (default) spin-configuration (productstate) OR kind="ket" arbitrary
             vector in Hilbert-subspace
                 OR kind="int" the unique state id in the state_table
+        trotterised - bool that indicates whether trotterised evolution
+                should be applied
+        xinit - bool that indicates whether all qubits should undergo Hadamard
+                before evolution
     Returns:
         sim - dictionary with the relevant density measurements: N1, N2, N12
         state_table - list of all state_numbers that belong to the relevant
@@ -405,6 +426,10 @@ def evolve(p, state_table, state, kind="list", trotterised=False):
     elif kind == "int":
         psi0 = np.zeros((len(state_table), 1), dtype=complex)
         psi0[state_table.index(state)] = 1.
+
+    if xinit:
+        H_matrix = local_H_matrix(p, state_table)
+        psi0 = H_matrix.dot(psi0)
 
     time = np.linspace(p['t_initial'], p['t_final'],
                        int(p['t_final'] / p['dt'] + 1))

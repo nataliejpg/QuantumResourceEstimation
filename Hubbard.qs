@@ -44,7 +44,7 @@ namespace Quantum.Hubbard {
     /// Coefficient of the Coulomb repulsion, U
     /// ## qubits
     /// Qubits that the encoded Hubbard Hamiltonian acts on.
-    operation ApplyChemicalPotentialTerms(nSites: Int, dt: Double, mu: Double, U: Double, qubits: Qubit[]): Unit is Adj + Ctl {
+    operation ApplyChemicalPotentialTerms(nSites: Int, dt: Double, mu: Double, U: Double, qubits: Qubit[]): Unit {
         for (idxSite in 0 .. nSites - 1) {
             Rz((mu - U / 2.) * dt, qubits[idxSite]);
             Rz((mu - U / 2.) * dt, qubits[idxSite + nSites]);
@@ -63,7 +63,7 @@ namespace Quantum.Hubbard {
     /// Coefficient of the Coulomb repulsion, U
     /// ## qubits
     /// Qubits that the encoded Hubbard Hamiltonian acts on.
-    operation ApplyCoulumbRepulsionTerms(nSites: Int, dt: Double, U: Double, qubits : Qubit[]): Unit is Adj + Ctl {
+    operation ApplyCoulumbRepulsionTerms(nSites: Int, dt: Double, U: Double, qubits : Qubit[]): Unit {
         for (idxSite in 0 .. nSites - 1) {
             let q1 = qubits[idxSite];
             let q2 = qubits[idxSite + nSites];
@@ -87,7 +87,7 @@ namespace Quantum.Hubbard {
     /// Trotter time step size
     /// ## J
     /// Coefficient of the hopping, J
-    operation ApplyRotationSequence(q1: Qubit, q2: Qubit, dt: Double, J: Double): Unit is Adj + Ctl {
+    operation ApplyRotationSequence(q1: Qubit, q2: Qubit, dt: Double, J: Double): Unit {
         H(q1);
         H(q2);
         CNOT(q1, q2);
@@ -117,7 +117,7 @@ namespace Quantum.Hubbard {
     /// Coefficient of the hopping term, J
     /// ## qubits
     /// Qubits that the encoded Hubbard Hamiltonian acts on.
-    operation ApplyHoppingTermsChain(nSites: Int, dt: Double, J: Double, qubits: Qubit[]): Unit is Adj + Ctl {
+    operation ApplyHoppingTermsChain(nSites: Int, dt: Double, J: Double, qubits: Qubit[]): Unit {
         for (idxSite in 0..2..nSites - 2) {
             ApplyRotationSequence(qubits[idxSite], qubits[idxSite + 1], dt, J);
             ApplyRotationSequence(qubits[idxSite + nSites], qubits[idxSite + nSites + 1], dt, J);
@@ -144,7 +144,7 @@ namespace Quantum.Hubbard {
     /// Coefficient of the hopping term, J
     /// ## qubits
     /// Qubits that the encoded Hubbard Hamiltonian acts on.
-    operation ApplyVerticalHoppingTerm(q1Idx: Int, q2Idx: Int, dt: Double, J: Double, qubits: Qubit[]): Unit is Adj + Ctl {
+    operation ApplyVerticalHoppingTerm(q1Idx: Int, q2Idx: Int, dt: Double, J: Double, qubits: Qubit[]): Unit {
         CNOT(qubits[q1Idx + 1], qubits[q1Idx + 2]);
         CZ(qubits[q2Idx - 1], qubits[q2Idx]);
         ApplyRotationSequence(qubits[q1Idx], qubits[q2Idx], dt, J);
@@ -171,7 +171,7 @@ namespace Quantum.Hubbard {
     /// Coefficient of the hopping term, J
     /// ## qubits
     /// Qubits that the encoded Hubbard Hamiltonian acts on plus ancilla(s)
-    operation ApplyRowHoppingTerms(q1Idxs: Int[], q2Idxs: Int[], ancillaIdx: Int, dt: Double, J: Double, qubits: Qubit[]): Unit is Adj + Ctl {
+    operation ApplyRowHoppingTerms(q1Idxs: Int[], q2Idxs: Int[], ancillaIdx: Int, dt: Double, J: Double, qubits: Qubit[]): Unit {
         let rungs = Length(q1Idxs);
         for (rIdx in 0..rungs - 1) {
             CNOT(qubits[q1Idxs[rIdx] + 1], qubits[ancillaIdx]);
@@ -203,7 +203,7 @@ namespace Quantum.Hubbard {
     /// Coefficient of the hopping term, J
     /// ## qubits
     /// Qubits that the encoded Hubbard Hamiltonian acts on.
-    operation ApplyHoppingTermsLadderVertical(nSites: Int, dt: Double, J: Double, qubits: Qubit[]): Unit is Adj + Ctl {
+    operation ApplyHoppingTermsLadderVertical(nSites: Int, dt: Double, J: Double, qubits: Qubit[]): Unit {
         ApplyHoppingTermsChain(nSites, dt, J, qubits);
         for (idxSite in 0..4..nSites - 4) {
             ApplyVerticalHoppingTerm(idxSite, idxSite + 3, dt, J, qubits);
@@ -228,7 +228,7 @@ namespace Quantum.Hubbard {
     /// Coefficient of the hopping term, J
     /// ## qubits
     /// Qubits that the encoded Hubbard Hamiltonian acts on plus ancilla
-    operation ApplyHoppingTermsLadderHorizontal(nSites: Int, dt: Double, J: Double, qubits: Qubit[]): Unit is Adj + Ctl {
+    operation ApplyHoppingTermsLadderHorizontal(nSites: Int, dt: Double, J: Double, qubits: Qubit[]): Unit {
         ApplyHoppingTermsChain(nSites, dt, J, qubits);
         let length = nSites / 2;
         let upperRowIndsup = Reversed(SequenceI(0, length - 2));
@@ -251,26 +251,26 @@ namespace Quantum.Hubbard {
     /// Coefficient of the hopping term, J
     /// ## qubits
     /// Qubits that the encoded Hubbard Hamiltonian acts on plus ancillas
-    operation ApplyHoppingTermsLattice(nSites: Int, dt: Double, J: Double, qubits: Qubit[]): Unit is Adj + Ctl {
+    operation ApplyHoppingTermsLattice(nSites: Int, dt: Double, J: Double, qubits: Qubit[]): Unit {
         ApplyHoppingTermsChain(nSites, dt, J, qubits);
         let length = Floor(Sqrt(IntAsDouble(nSites)));
         for (row in 0..2..(length - 2)){
-            let upperRowIndsup = Reversed(SequenceI(row * length, length * (row + 1) - 2));
-            let upperRowIndsdown = Reversed(SequenceI(nSites + row * length, nSites + length * (row + 1) - 2));
-            let lowerRowIndsup = SequenceI(length * (row + 1) + 1, length * (row + 2) - 1);
-            let lowerRowIndsdown = SequenceI(nSites + length * (row + 1) + 1, nSites + length * (row + 2) - 1);  
+            let upperRowIndsup = Reversed(SequenceI(row * length, row * length + length - 2));
+            let upperRowIndsdown = Reversed(SequenceI(nSites + row * length, nSites + row * length + length - 2));
+            let lowerRowIndsup = SequenceI(row * length + length + 1, row * length + 2 * length - 1);
+            let lowerRowIndsdown = SequenceI(nSites + row * length + length + 1, nSites + row * length + 2 * length - 1);  
             let ancillaIdxup = 2 * nSites + row;
-            let ancillaIdxdown = 2 * nSites + row - 1;
+            let ancillaIdxdown = 2 * nSites + row + 1;
             ApplyRowHoppingTerms(upperRowIndsup, lowerRowIndsup, ancillaIdxup, dt, J, qubits);
             ApplyRowHoppingTerms(upperRowIndsdown, lowerRowIndsdown, ancillaIdxdown, dt, J, qubits);
         }
         for (row in 1..2..(length - 2)){
-            let upperRowIndsup = Reversed(SequenceI(row * length, length * (row + 1) - 2));
-            let upperRowIndsdown = Reversed(SequenceI(nSites + row * length, nSites + length * (row + 1) - 2));
-            let lowerRowIndsup = SequenceI(length * (row + 1) + 1, length * (row + 2) - 1);
-            let lowerRowIndsdown = SequenceI(nSites + length * (row + 1) + 1, nSites + length * (row + 2) - 1);  
+            let upperRowIndsup = Reversed(SequenceI(row * length, row * length + length - 2));
+            let upperRowIndsdown = Reversed(SequenceI(nSites + row * length, nSites + row * length + length - 2));
+            let lowerRowIndsup = SequenceI(row * length + length + 1, row * length + 2 * length - 1);
+            let lowerRowIndsdown = SequenceI(nSites + row * length + length + 1, nSites + row * length + 2 * length - 1); 
             let ancillaIdxup = 2 * nSites + row - 1;
-            let ancillaIdxdown = 2 * nSites + row - 2;
+            let ancillaIdxdown = 2 * nSites + row;
             ApplyRowHoppingTerms(upperRowIndsup, lowerRowIndsup, ancillaIdxup, dt, J, qubits);
             ApplyRowHoppingTerms(upperRowIndsdown, lowerRowIndsdown, ancillaIdxdown, dt, J, qubits);
         }
@@ -294,7 +294,7 @@ namespace Quantum.Hubbard {
     /// integer labeling structure, 1: chain, 2: vertical ladder, 3: horizontal ladder, 4: 2D lattice
     /// ## qubits
     /// Qubits that the encoded Hubbard Hamiltonian acts on plus any ancilla qubits
-    operation EvolveSingleTimestep(nSites: Int, dt: Double, mu: Double, U: Double, J: Double, structure: Int, qubits: Qubit[]): Unit is Adj + Ctl {
+    operation EvolveSingleTimestep(nSites: Int, dt: Double, mu: Double, U: Double, J: Double, structure: Int, qubits: Qubit[]): Unit {
         ApplyChemicalPotentialTerms(nSites, dt, mu, U, qubits);
         ApplyCoulumbRepulsionTerms(nSites, dt, U, qubits);
         if (structure == 1) {
@@ -313,8 +313,8 @@ namespace Quantum.Hubbard {
     /// (ie useful for gate count but not evolution)
     ///
     /// # Input
-    /// ## nSites
-    /// Number of sites in the Hubbard Hamiltonian.
+    /// ## initialState
+    /// List of initial states of each site in the z basis (0: down down, 1: down up, 2: up down, 3: up up)
     /// ## dt
     /// Trotter time step size
     /// ## mu
@@ -325,8 +325,16 @@ namespace Quantum.Hubbard {
     /// Coefficient of the hopping term, J
     /// ## structure
     /// integer labeling structure, 1: chain, 2: vertical ladder, 3: horizontal ladder, 4: 2D lattice
-    operation EvolveSingleTimestepDummy(nSites: Int, dt: Double, mu: Double, U: Double, J: Double, structure: Int): Unit is Adj + Ctl {
-        using (qubits = Qubit[nSites * 2]) {
+    operation EvolveSingleTimestepDummy(initialState: Int[], dt: Double, mu: Double, U: Double, J: Double, structure: Int): Unit {
+        let nSites = Length(initialState);
+        mutable qubitNum = 2 * nSites;
+        if (structure == 3) {
+            set qubitNum += 2;
+        } elif (structure == 4) {
+            let length = Floor(Sqrt(IntAsDouble(nSites)));
+            set qubitNum += 2 * (length / 2);
+        }
+        using (qubits = Qubit[qubitNum]) {
             EvolveSingleTimestep(nSites, dt, mu, U, J, structure, qubits);
         }
     }
