@@ -5,6 +5,7 @@ namespace Quantum.Hubbard {
     open Microsoft.Quantum.Canon;
     open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Convert;
+    open Quantum.Migrating;
 
     // Implement evolution under Trotterised Hubbard model as defined by
     //     H ≔ - JΣ'ᵢⱼ Σσ (cᵢσ^\dagger cⱼσ + h.c) + U Σᵢnᵢup nᵢdown + μ Σᵢ Σσ nᵢσ
@@ -13,13 +14,13 @@ namespace Quantum.Hubbard {
     /// # Summary
     /// Applies Clifford X/2 rotation gate so 0 -> Y and Y -> 1
     operation ClifY(qubit: Qubit): Unit is Adj + Ctl {
-        Rx(PI() / 2., qubit);
+        Rx(PI() / -2., qubit);
     }
 
     /// # Summary
     /// Applies Clifford -X/2 rotation gate so 1 -> Y and Y -> 0
     operation ClifYInv(qubit: Qubit): Unit is Adj + Ctl {
-        Rx(PI() / -2., qubit);
+        Rx(PI() / 2., qubit);
     }
 
     /// # Summary
@@ -325,7 +326,9 @@ namespace Quantum.Hubbard {
     /// Coefficient of the hopping term, J
     /// ## structure
     /// integer labeling structure, 1: chain, 2: vertical ladder, 3: horizontal ladder, 4: 2D lattice
-    operation EvolveSingleTimestepDummy(initialState: Int[], dt: Double, mu: Double, U: Double, J: Double, structure: Int): Unit {
+    /// ## nnonly
+    /// bool whether or not there is only nearest neighbour qubit interactions
+    operation EvolveSingleTimestepDummy(initialState: Int[], dt: Double, mu: Double, U: Double, J: Double, structure: Int, nnonly: Bool): Unit {
         let nSites = Length(initialState);
         mutable qubitNum = 2 * nSites;
         if (structure == 3) {
@@ -357,11 +360,13 @@ namespace Quantum.Hubbard {
     /// Coefficient of the hopping term, J
     /// ## structure
     /// integer labeling structure, 1: chain, 2: vertical ladder, 3: horizontal ladder, 4: 2D lattice
+    /// ## nnonly
+    /// bool whether or not there is only nearest neighbour qubit interactions
     ///
     /// # Output
     /// ## finalState
     /// list comparible to initialState of states of each site measured in z basis
-    operation Evolve(initialState: Int[], time: Double, dt: Double, mu: Double, U: Double, J: Double, structure: Int): Int[] {
+    operation Evolve(initialState: Int[], time: Double, dt: Double, mu: Double, U: Double, J: Double, structure: Int, nnonly: Bool): Int[] {
         let nSites = Length(initialState);
         mutable qubitNum = 2 * nSites;
         if (structure == 3) {

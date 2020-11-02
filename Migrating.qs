@@ -1,4 +1,4 @@
-namespace Quantum.Hubbard {
+namespace Quantum.Migrating {
     open Microsoft.Quantum.Arrays;
     open Microsoft.Quantum.Measurement;
     open Microsoft.Quantum.Intrinsic;
