@@ -5,7 +5,6 @@ namespace Quantum.Isinglongrange {
     open Microsoft.Quantum.Canon;
     open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Convert;
-    open Quantum.Migrating;
 
     // Implement evolution under Trotterised Ising model as defined by
     //     H ≔ - Σᵢⱼ Jᵢⱼ Zᵢ Zⱼ - Σᵢ hᵢ Zᵢ - Σᵢ gᵢ Xᵢ
@@ -13,92 +12,193 @@ namespace Quantum.Isinglongrange {
 
     /// # Summary
     /// Applies coupling term - Σᵢⱼ Jᵢⱼ Zᵢ Zⱼ for all qubits one site at a time (ie sweep j for each i)
+    //
     /// # Input
-    /// ## nSites
-    /// Number of sites in the Hamiltonian.
     /// ## dt
     /// Trotter time step size
     /// ## J
     /// 2d array of coupling coefficients Jᵢⱼ
-    /// ## nnonly
-    /// bool whether or not there is only nearest neighbour qubit interactions
     /// ## qubits
     /// Qubits that the encoded Ising Hamiltonian acts on.
-    operation EvolveCouplings(nSites: Int, dt: Double, J: Double[][], nnonly: Bool, qubits: Qubit[]): Unit {
+    operation EvolveCouplingsNaive(dt: Double, J: Double[][], qubits: Qubit[]): Unit {
+        let nSites = Length(qubits);
         for (i in 0 .. nSites - 2) {
             for (j in i + 1 .. nSites - 1) {
-                if  (nnonly) {
-                    Juxtapose(i, j, qubits);
-                    ApplyWithCA(CNOT(qubits[i], _), Rz(-2.0 * J[i][j] * dt, _), qubits[i + 1]);
-                    Separate(i, j, qubits);
-                } else {
-                    ApplyWithCA(CNOT(qubits[i], _), Rz(-2.0 * J[i][j] * dt, _), qubits[j]);
-                }
+                ApplyWithCA(CNOT(qubits[i], _), Rz(-2.0 * J[i][j] * dt, _), qubits[j]);
             }
         }
     } 
 
     /// # Summary
-    /// Applies coupling term - Σᵢⱼ Jᵢⱼ Zᵢ Zⱼ for all qubits minimising circuit depth
+    /// Applies coupling term - Σᵢⱼ Jᵢⱼ Zᵢ Zⱼ for all qubits minimising circuit depth and assuming all to all coupling
     ///
     /// # Input
-    /// ## nSites
-    /// Number of sites in the Hamiltonian.
     /// ## dt
     /// Trotter time step size
     /// ## J
     /// 2d array of coupling coefficients Jᵢⱼ
-    /// ## nnonly
-    /// bool whether or not there is only nearest neighbour qubit interactions
+    /// ## mapping
+    /// register of the site indices respresented by the qubits (-1 signifies an ancilla)
     /// ## qubits
     /// Qubits that the encoded Ising Hamiltonian acts on.
-    operation EvolveCouplingsNested(nSites: Int, dt: Double, J: Double[][], nnonly: Bool, qubits: Qubit[]): Unit {
-        let num = nSites/2 + nSites%2;
-        for (step in 0 .. num) {
-            for (ind in 0 .. nSites/2 - 1) {
-                let i = ind - step;
-                let j = nSites - (ind + step + 1);
-                if  (nnonly) {
-                    Juxtapose(i, j, qubits);
-                    ApplyWithCA(CNOT(qubits[i], _), Rz(-2.0 * J[i][j] * dt, _), qubits[i + 1]);
-                    Separate(i, j, qubits);
-                } else {
-                    ApplyWithCA(CNOT(qubits[i], _), Rz(-2.0 * J[i][j] * dt, _), qubits[j]);
+    ///
+    /// # Output
+    /// ## newMapping
+    /// the updated mapping register
+    operation EvolveCouplingsAllToAll(dt: Double, J: Double[][], mapping: Int[], qubits: Qubit[]): Int[] {
+        let nSites = Length(qubits);
+        mutable idxTarget = 0;
+        mutable newMapping = new Int[Length(mapping)];
+        set newMapping = mapping;
+        for (step in 0..(nSites - 1)) {
+            if (step % 2 == 0) {
+                for (idxSource in 0..(nSites/2 - 1)) {
+                    set idxTarget = nSites - idxSource - 1;
+                    ApplyWithCA(CNOT(qubits[newMapping[idxSource]], _),
+                                Rz(-2.0 * J[newMapping[idxSource]][newMapping[idxTarget]] * dt, _),
+                                qubits[newMapping[idxTarget]]);
+                }
+                for (idx in 0..((nSites + 1)/2 - 1)) {
+                    set newMapping = Swapped(nSites - idx, nSites - idx - 1, newMapping);
                 }
             }
-            if ((nSites%2 == 0) or (step < nSites/2)){
-                for (ind in 0 .. nSites/2 - 1) {
-                    let i = ind - step;
-                    let j = nSites - (step + ind + 2);
-                    if (ind == (num - 1)) {
-                        if  (nnonly) {
-                            Juxtapose(i, j + num, qubits);
-                            ApplyWithCA(CNOT(qubits[i], _), Rz(-2.0 * J[i][j + num] * dt, _), qubits[i + 1]);
-                            Separate(i, j + num, qubits);
-                        } else {
-                            ApplyWithCA(CNOT(qubits[i], _), Rz(-2.0 * J[i][j + num] * dt, _), qubits[j + num]);
-                        }
-                    } else {
-                        if  (nnonly) {
-                            Juxtapose(i, j, qubits);
-                            ApplyWithCA(CNOT(qubits[i], _), Rz(-2.0 * J[i][j] * dt, _), qubits[i + 1]);
-                            Separate(i, j, qubits);
-                        } else {
-                            ApplyWithCA(CNOT(qubits[i], _), Rz(-2.0 * J[i][j] * dt, _), qubits[j]);
-                        }
-                    }
-                    
+            else {
+                for (idxSource in 0..((nSites - 1)/2 - 1)) {
+                    set idxTarget = nSites - idxSource - 1;
+                    ApplyWithCA(CNOT(qubits[newMapping[idxSource]], _),
+                                Rz(-2.0 * J[newMapping[idxSource]][newMapping[idxTarget]] * dt, _),
+                                qubits[newMapping[idxTarget]]);
                 }
+                for (ind in 0..(nSites/2 - 1)) {
+                    set newMapping = Swapped(nSites/2 - ind, nSites/2 - ind - 1, newMapping);
+                }
+                set newMapping = Swapped(0, nSites, newMapping);
             }
         }
+        return newMapping;
     }
+
+
+    /// # Summary
+    /// Applies coupling term - Σᵢⱼ Jᵢⱼ Zᵢ Zⱼ for all qubits minimising circuit depth and assuming nearest neighbour coupling
+    ///
+    /// # Input
+    /// ## dt
+    /// Trotter time step size
+    /// ## J
+    /// 2d array of coupling coefficients Jᵢⱼ
+    /// ## mapping
+    /// register of the site indices respresented by the qubits (-1 signifies an ancilla)
+    /// ## qubits
+    /// Qubits that the encoded Ising Hamiltonian acts on.
+    ///
+    /// # Output
+    /// ## newMapping
+    /// the updated mapping register
+    operation EvolveCouplingsParallel(dt: Double, J: Double[][], mapping: Int[], qubits: Qubit[]): Int[] {
+        let nSites = (Length(qubits) - 1) / 2;
+        mutable idxTarget = 0;
+        mutable newMapping = new Int[Length(mapping)];
+        set newMapping = mapping;
+        for (step in 0..(nSites - 1)) {
+            if (step % 2 == 0) {
+                for (idxSource in 0..(nSites/2 - 1)) {
+                    set idxTarget = nSites - idxSource - 1;
+                    ApplyWithCA(CNOT(qubits[idxSource], _),
+                                Rz(-2.0 * J[newMapping[idxSource]][newMapping[idxTarget]] * dt, _),
+                                qubits[idxTarget]);
+                }
+                for (idx in 1..((nSites + 1)/2 - 1)) {
+                    SWAP(qubits[nSites - idx], qubits[2 * nSites - idx + 1]);
+                    SWAP(qubits[2 * nSites - idx + 1], qubits[nSites - idx - 1]);
+                    set newMapping = Swapped(nSites - idx, nSites - idx - 1, newMapping);
+                }
+                SWAP(qubits[nSites], qubits[nSites - 1]);
+                set newMapping = Swapped(nSites, nSites - 1, newMapping);
+
+            } else {
+                for (idxSource in 0..((nSites - 1)/2 - 1)) {
+                    set idxTarget = nSites - idxSource - 1;
+                    ApplyWithCA(CNOT(qubits[idxSource], _),
+                                Rz(-2.0 * J[newMapping[idxSource]][newMapping[idxTarget]] * dt, _),
+                                qubits[idxTarget]);
+                }
+                for (ind in 1..((nSites)/2 - 1)) {
+                    SWAP(qubits[nSites/2 - ind], qubits[nSites/2 - ind + nSites + 1]);
+                }
+                SWAP(qubits[0], qubits[nSites + 1]);
+                for (ind in 1..((nSites)/2 - 1)) {
+                    SWAP(qubits[nSites/2 - ind + nSites + 1], qubits[nSites/2 - ind - 1]);
+                    set newMapping = Swapped(nSites/2 - ind, nSites/2 - ind - 1, newMapping);
+                }
+                SWAP(qubits[nSites + 1], qubits[nSites]);
+                set newMapping = Swapped(0, nSites, newMapping);
+                SWAP(qubits[nSites/2], qubits[nSites/2 - 1]);
+                set newMapping = Swapped(nSites/2, nSites/2 - 1, newMapping);
+            }
+        }
+        return newMapping;
+    }
+
+
+
+    /// # Summary
+    /// Applies coupling term - Σᵢⱼ Jᵢⱼ Zᵢ Zⱼ for all qubits minimising circuit depth in rotation gates
+    /// but not in SWAPS and assuming nearest  neighbour coupling
+    ///
+    /// # Input
+    /// ## dt
+    /// Trotter time step size
+    /// ## J
+    /// 2d array of coupling coefficients Jᵢⱼ
+    /// ## mapping
+    /// register of the site indices respresented by the qubits (-1 signifies an ancilla)
+    /// ## qubits
+    /// Qubits that the encoded Ising Hamiltonian acts on.
+    ///
+    /// # Output
+    /// ## newMapping
+    /// the updated mapping register
+    operation EvolveCouplingsSequential(dt: Double, J: Double[][], mapping: Int[], qubits: Qubit[]): Int[] {
+        let nSites = Length(qubits) - 1;
+        mutable idxTarget = 0;
+        mutable newMapping = new Int[Length(mapping)];
+        set newMapping = mapping;
+        for (step in 0..(nSites - 1)) {
+            if (step % 2 == 0) {
+                for (idxSource in 0..(nSites/2 - 1)) {
+                    set idxTarget = nSites - idxSource - 1;
+                    ApplyWithCA(CNOT(qubits[idxSource], _),
+                                Rz(-2.0 * J[newMapping[idxSource]][newMapping[idxTarget]] * dt, _),
+                                qubits[idxTarget]);
+                }
+                for (idx in 0..((nSites + 1)/2 - 1)) {
+                    SWAP(qubits[nSites - idx], qubits[nSites - idx - 1]);
+                    set newMapping = Swapped(nSites - idx, nSites - idx - 1, newMapping);
+                }
+            } else{
+                for (idxSource in 0..((nSites - 1)/2 - 1)) {
+                    set idxTarget = nSites - idxSource - 1;
+                    ApplyWithCA(CNOT(qubits[idxSource], _),
+                                Rz(-2.0 * J[newMapping[idxSource]][newMapping[idxTarget]] * dt, _),
+                                qubits[idxTarget]);
+                }
+                for (ind in 0..((nSites)/2 - 1)) {
+                    SWAP(qubits[nSites/2 - ind], qubits[nSites/2 - ind - 1]);
+                    set newMapping = Swapped(nSites/2 - ind, nSites/2 - ind - 1, newMapping);
+                }
+                SWAP(qubits[0], qubits[nSites]);
+                set newMapping = Swapped(0, nSites, newMapping);
+            }
+        }
+        return newMapping;
+    }
+
 
     /// # Summary
     /// Applies evolution for a single timestep.
     ///
     /// # Input
-    /// ## nSites
-    /// Number of sites in the Hamiltonian.
     /// ## dt
     /// Trotter time step size
     /// ## g
@@ -107,22 +207,39 @@ namespace Quantum.Isinglongrange {
     /// 1d array of longitudinal field coefficients hᵢ
     /// ## J
     /// 2d array of coupling coefficients Jᵢⱼ
-    /// ## nested
-    /// bool value of whether or not to reorder coupling terms to minimise circuit depth
     /// ## nnonly
     /// bool whether or not there is only nearest neighbour qubit interactions
+    /// ## parallel
+    /// bool whether or not to execute SWAP operationsin parallel
+    /// ## mapping
+    /// register of the site indices respresented by the qubits (-1 signifies an ancilla)
     /// ## qubits
     /// Qubits that the encoded Ising Hamiltonian acts on.
-    operation EvolveSingleTimestep(nSites: Int, dt: Double, g: Double[], h: Double[], J: Double[][], nested: Bool, nnonly: Bool, qubits : Qubit[]): Unit {
-        for (idxSite in 0 .. nSites - 1) {
-            Rx((-2.0 * g[idxSite]) * dt, qubits[idxSite]);
-            Rz((-2.0 * h[idxSite]) * dt, qubits[idxSite]);
+    ///
+    /// # Output
+    /// ## newMapping
+    /// the updated mapping register
+    operation EvolveSingleTimestep(dt: Double, g: Double[], h: Double[], J: Double[][], nnonly: Bool, parallel: Bool,
+                                   mapping: Int[], qubits: Qubit[]): Int[] {
+        let nMap = Length(mapping);
+        for (idx in 0 .. nMap - 1) {
+            if (mapping[idx] >= 0) {
+                Rx((-2.0 * g[mapping[idx]]) * dt, qubits[idx]);
+                Rz((-2.0 * h[mapping[idx]]) * dt, qubits[idx]);
             }
-        if (nested) {
-            EvolveCouplingsNested(nSites, dt, J, nnonly, qubits);
-        } else {
-            EvolveCouplings(nSites, dt, J, nnonly, qubits);
         }
+        mutable newMapping = new Int[Length(mapping)];
+        set newMapping = mapping;
+        if (nnonly and parallel) {
+            set newMapping = EvolveCouplingsParallel(dt, J, mapping, qubits);
+        } elif (nnonly) {
+            set newMapping = EvolveCouplingsSequential(dt, J, mapping, qubits);
+        } elif (parallel) {
+            set newMapping = EvolveCouplingsAllToAll(dt, J, mapping, qubits);
+        } else {
+            EvolveCouplingsNaive(dt, J, qubits);
+        }
+        return newMapping;
     }
 
     /// # Summary
@@ -130,8 +247,6 @@ namespace Quantum.Isinglongrange {
     /// (ie useful for gate count but not evolution)
     ///
     /// # Input
-    /// ## nSites
-    /// Number of sites in the Hamiltonian.
     /// ## dt
     /// Trotter time step size
     /// ## g
@@ -140,15 +255,36 @@ namespace Quantum.Isinglongrange {
     /// 1d array of longitudinal field coefficients hᵢ
     /// ## J
     /// 2d array of coupling coefficients Jᵢⱼ
-    /// ## nested
-    /// bool value of whether or not to reorder coupling terms to minimise circuit depth
     /// ## nnonly
     /// bool whether or not there is only nearest neighbour qubit interactions
-    operation EvolveSingleTimestepDummy(nSites: Int, dt: Double, g: Double[], h: Double[], J: Double[][], nested: Bool, nnonly: Bool): Unit {
-        using (qubits = Qubit[nSites]) {
-            EvolveSingleTimestep(nSites, dt, g, h, J, nested, nnonly, qubits);
+    /// ## parallel
+    /// bool whether or not to execute SWAP operationsin parallel
+    operation EvolveSingleTimestepDummy(dt: Double, g: Double[], h: Double[], J: Double[][], nnonly: Bool, parallel: Bool): Unit {
+        let nSites = Length(g); 
+        mutable nQubits = nSites;
+        mutable nMap = nSites;
+        if (nnonly) {
+            set nQubits += 1;
+            set nMap += 1;
+        } elif (parallel) {
+            set nMap += 1;
+        }
+        mutable mapping = new Int[nMap];
+        if (nnonly and parallel) {
+            set nQubits += nSites + 1;
+        }
+        for (idx in 0 .. nSites - 1) {
+            if (idx < nSites) {
+                set mapping w/= idx <- idx;
+            } else {
+                set mapping w/= idx <- -1;
+            }
+        }
+        using (qubits = Qubit[nQubits]) {
+            set mapping = EvolveSingleTimestep(dt, g, h, J, nnonly, parallel, mapping, qubits);
         }
     }
+
     /// # Summary
     /// Applies full evolution in steps of dt.
     ///
@@ -165,10 +301,10 @@ namespace Quantum.Isinglongrange {
     /// 1d array of longitudinal field coefficients hᵢ
     /// ## J
     /// 2d array of coupling coefficients Jᵢⱼ
-    /// ## nested
-    /// bool value of whether or not to reorder coupling terms to minimise circuit depth
     /// ## nnonly
     /// bool whether or not there is only nearest neighbour qubit interactions
+    /// ## parallel
+    /// bool whether or not to execute SWAP operationsin parallel
     /// ## xinit
     /// bool whether to apply an initial Hadamard so as to initialise in the x basis
     /// ## xmeas
@@ -176,28 +312,51 @@ namespace Quantum.Isinglongrange {
     ///
     /// # Output
     /// ## finalState
-    /// 1d array of final states of each qubit in z basis (0 or 1)
-    operation Evolve(initialState: Int[], time: Double, dt: Double, g: Double[], h: Double[], J: Double[][], nested: Bool, nnonly: Bool, xinit: Bool, xmeas:Bool): Result[] {
-        let nSites = Length(initialState);
-        using (qubits = Qubit[nSites]) {
-            for (idxSite in 0 .. nSites - 1) {
-                if (initialState[idxSite] == 1) {
-                    X(qubits[idxSite]);
-                }
-                if (xinit) {
-                    H(qubits[idxSite]);
+    /// 1d array of final states of each qubit in z basis (false or true)
+    operation Evolve(initialState: Int[], time: Double, dt: Double, g: Double[], h: Double[], J: Double[][], nnonly: Bool, parallel: Bool, xinit: Bool, xmeas:Bool): Bool[] {
+        let nSites = Length(initialState); 
+        mutable nQubits = nSites;
+        mutable nMap = nSites;
+        if (nnonly) {
+            set nQubits += 1;
+            set nMap += 1;
+        } elif (parallel) {
+            set nMap += 1;
+        }
+        mutable mapping = new Int[nMap];
+        if (nnonly and parallel) {
+            set nQubits += nSites + 1;
+        }
+        using (qubits = Qubit[nQubits]) {
+            for (idx in 0 .. nMap - 1) {
+                if (idx < nSites) {
+                    set mapping w/= idx <- idx;
+                    if (initialState[idx] == 1) {
+                        X(qubits[idx]);
+                    }
+                    if (xinit) {
+                        H(qubits[idx]);
+                    }
+                } else {
+                    set mapping w/= idx <- -1;
                 }
             }
             let nSteps = Floor(time / dt);
-            for (idxIter in 0 .. nSteps - 1) {
-                EvolveSingleTimestep(nSites, dt, g, h, J, nested, nnonly, qubits);
+            for (timestep in 0 .. nSteps - 1) {
+                set mapping = EvolveSingleTimestep(dt, g, h, J, nnonly, parallel, mapping, qubits);
             }
-            if (xmeas) {
-                for (q in qubits) {
-                    H(q);
+            mutable boolArray = new Bool[nSites];
+            for (idx in 0 .. nMap - 1) {
+                if (mapping[idx] >= 0) {
+                    if (xmeas) {
+                        H(qubits[idx]);
+                    }
+                    if (MResetZ(qubits[idx]) == One) {
+                        set boolArray w/= mapping[idx] <- true;
+                    }
                 }
             }
-            return ForEach(MResetZ, qubits);
+            return boolArray;
         }
     }
 }
