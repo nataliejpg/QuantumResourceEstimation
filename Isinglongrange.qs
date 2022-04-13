@@ -224,11 +224,11 @@ namespace Quantum.Isinglongrange {
         let nMap = Length(mapping);
         for (idx in 0 .. nMap - 1) {
             if (mapping[idx] >= 0) {
-                Rx((-2.0 * g[mapping[idx]]) * dt, qubits[idx]);
-                Rz((-2.0 * h[mapping[idx]]) * dt, qubits[idx]);
+                Rx((-2.0 * g[mapping[idx]]) * dt, qubits[mapping[idx]]);
+                Rz((-2.0 * h[mapping[idx]]) * dt, qubits[mapping[idx]]);
             }
         }
-        mutable newMapping = new Int[Length(mapping)];
+        mutable newMapping = new Int[nMap];
         set newMapping = mapping;
         if (nnonly and parallel) {
             set newMapping = EvolveCouplingsParallel(dt, J, mapping, qubits);
@@ -313,20 +313,15 @@ namespace Quantum.Isinglongrange {
     /// # Output
     /// ## finalState
     /// 1d array of final states of each qubit in z basis (false or true)
-    operation Evolve(initialState: Int[], time: Double, dt: Double, g: Double[], h: Double[], J: Double[][], nnonly: Bool, parallel: Bool, xinit: Bool, xmeas:Bool): Bool[] {
+    operation Evolve(initialState: Int[], time: Double, dt: Double, g: Double[],
+        h: Double[], J: Double[][], nnonly: Bool, parallel: Bool, xinit: Bool, xmeas:Bool): Bool[] {
         let nSites = Length(initialState); 
         mutable nQubits = nSites;
         mutable nMap = nSites;
-        if (nnonly) {
-            set nQubits += 1;
-            set nMap += 1;
-        } elif (parallel) {
+        if (parallel) {
             set nMap += 1;
         }
         mutable mapping = new Int[nMap];
-        if (nnonly and parallel) {
-            set nQubits += nSites + 1;
-        }
         using (qubits = Qubit[nQubits]) {
             for (idx in 0 .. nMap - 1) {
                 if (idx < nSites) {

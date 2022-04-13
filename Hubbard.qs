@@ -326,9 +326,7 @@ namespace Quantum.Hubbard {
     /// Coefficient of the hopping term, J
     /// ## structure
     /// integer labeling structure, 1: chain, 2: vertical ladder, 3: horizontal ladder, 4: 2D lattice
-    /// ## nnonly
-    /// bool whether or not there is only nearest neighbour qubit interactions
-    operation EvolveSingleTimestepDummy(initialState: Int[], dt: Double, mu: Double, U: Double, J: Double, structure: Int, nnonly: Bool): Unit {
+    operation EvolveSingleTimestepDummy(initialState: Int[], dt: Double, mu: Double, U: Double, J: Double, structure: Int): Unit {
         let nSites = Length(initialState);
         mutable qubitNum = 2 * nSites;
         if (structure == 3) {
@@ -360,13 +358,11 @@ namespace Quantum.Hubbard {
     /// Coefficient of the hopping term, J
     /// ## structure
     /// integer labeling structure, 1: chain, 2: vertical ladder, 3: horizontal ladder, 4: 2D lattice
-    /// ## nnonly
-    /// bool whether or not there is only nearest neighbour qubit interactions
     ///
     /// # Output
     /// ## finalState
     /// list comparible to initialState of states of each site measured in z basis
-    operation Evolve(initialState: Int[], time: Double, dt: Double, mu: Double, U: Double, J: Double, structure: Int, nnonly: Bool): Int[] {
+    operation Evolve(initialState: Int[], time: Double, dt: Double, mu: Double, U: Double, J: Double, structure: Int): Int[] {
         let nSites = Length(initialState);
         mutable qubitNum = 2 * nSites;
         if (structure == 3) {
