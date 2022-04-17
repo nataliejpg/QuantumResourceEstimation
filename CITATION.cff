@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+authors:
+  - family-names: "Pearson"
+    given-names: "Natalie"
+    orcid: "https://orcid.org/0000-0002-5993-7258"
+  - family-names: "Kombe"
+    given-names: "Johannes"
+    orcid: "https://orcid.org/0000-0002-9982-2068"
+title: "Quantum Resource Estimation"
+version: 0.1.0
+doi: 10.5281/zenodo.6466128
+date-released: 2022-04-17
