@@ -6,10 +6,15 @@ Q# code implementing dynamics of the Fermi-Hubbard and long range Ising models o
 - python 3.6.7
 - numpy 1.18.1
 - scipy 1.4.1
-- qsharp 0.11.2004.2825
+- qsharp >= 0.11.2004.2825
 - notebook 6.0.1
+optional for jupyter notebook example:
+- jupyter
+- matplotlib
+- progressbar2
 
 ### Improvements
 - Implement 2nd and 4th order Trotter decompositions so that the full evolution estimates can be directly calculated (and that the dynamics have lower errors so can be run with larger timesteps more quickly)
 - Implement Q# depth counter
-- Extend to include other models
+- Implement resource estimation for hardware with only nearest neighbour connectivity
+- Extend to include other models (incl nearest neighbour ising with variable coupling coefficients)

@@ -5,7 +5,6 @@ namespace Quantum.Hubbard {
     open Microsoft.Quantum.Canon;
     open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Convert;
-    open Quantum.Migrating;
 
     // Implement evolution under Trotterised Hubbard model as defined by
     //     H ≔ - JΣ'ᵢⱼ Σσ (cᵢσ^\dagger cⱼσ + h.c) + U Σᵢnᵢup nᵢdown + μ Σᵢ Σσ nᵢσ
