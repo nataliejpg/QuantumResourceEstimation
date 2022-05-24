@@ -20,7 +20,7 @@ namespace Quantum.Isingnearest{
     /// ## qubits
     /// Qubits that the encoded Ising Hamiltonian acts on.
     operation EvolveCouplings(nSites: Int, dt: Double, J: Double, qubits: Qubit[]): Unit {
-        let L = DoubleAsInt(Sqrt(IntAsDouble(nSites)));
+        let L = Truncate(Sqrt(IntAsDouble(nSites)));
         for (r in 0 .. (L - 1)) {
             for (c in 0..2..(L - 2)) {
                 let ind = r * L + c;
